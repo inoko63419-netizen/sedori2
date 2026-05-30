@@ -4,760 +4,516 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>せどり巡回ルートプランナー</title>
-
-  <!-- PWA -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="せどりルート">
-  <meta name="theme-color" content="#1A1916">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg: #F5F3EE;
-  --surface: #FFFFFF;
-  --border: #E0DDD6;
-  --text: #1A1916;
-  --muted: #7A7772;
-  --drug: #1D4ED8;
-  --drug-bg: #EFF6FF;
-  --drug-border: #BFDBFE;
-  --super: #15803D;
-  --super-bg: #F0FDF4;
-  --super-border: #BBF7D0;
-  --accent: #C84B11;
-  --radius: 10px;
-  --radius-lg: 16px;
+:root{
+  --bg:#F5F3EE;--surface:#FFF;--border:#E0DDD6;--text:#1A1916;--muted:#7A7772;
+  --drug:#1D4ED8;--drug-bg:#EFF6FF;--drug-border:#BFDBFE;
+  --super:#15803D;--super-bg:#F0FDF4;--super-border:#BBF7D0;
+  --accent:#C84B11;--radius:10px;--radius-lg:16px;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: 'Noto Sans JP', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  padding-bottom: 40px;
-}
-header {
-  background: var(--text);
-  color: #fff;
-  padding: 20px 20px 18px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-header h1 { font-size: 17px; font-weight: 700; letter-spacing: 0.02em; }
-header p { font-size: 12px; color: #A8A6A2; margin-top: 3px; }
-.container { max-width: 540px; margin: 0 auto; padding: 20px 16px; }
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 18px;
-  margin-bottom: 14px;
-}
-.card-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-.origin-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--bg);
-  border-radius: var(--radius);
-  padding: 11px 14px;
-  font-size: 14px;
-  font-weight: 500;
-}
-.origin-icon {
-  width: 28px; height: 28px;
-  background: var(--text);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.origin-icon svg { width: 14px; height: 14px; fill: #fff; }
-input[type=text] {
-  width: 100%;
-  padding: 11px 14px;
-  font-size: 14px;
-  font-family: 'Noto Sans JP', sans-serif;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  color: var(--text);
-  outline: none;
-  transition: border-color 0.15s;
-}
-input[type=text]:focus { border-color: var(--text); }
-.chip-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 2px;
-}
-.chip {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 9px 12px;
-  font-size: 13px;
-  font-family: 'Noto Sans JP', sans-serif;
-  cursor: pointer;
-  background: var(--bg);
-  color: var(--muted);
-  text-align: center;
-  transition: all 0.15s;
-  font-weight: 500;
-}
-.chip:active { transform: scale(0.97); }
-.chip.drug-on { background: var(--drug-bg); border-color: var(--drug-border); color: var(--drug); }
-.chip.super-on { background: var(--super-bg); border-color: var(--super-border); color: var(--super); }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:60px;}
+header{background:var(--text);color:#fff;padding:18px 20px;position:sticky;top:0;z-index:10;}
+header h1{font-size:16px;font-weight:700;}
+header p{font-size:11px;color:#A8A6A2;margin-top:3px;}
+.container{max-width:560px;margin:0 auto;padding:16px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px;}
+.step-label{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.step-num{width:18px;height:18px;border-radius:50%;background:var(--text);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 
-/* 巡回時間スライダー */
-.time-display {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-bottom: 14px;
-}
-.time-value {
-  font-size: 32px;
-  font-weight: 700;
-  font-family: 'DM Mono', monospace;
-  color: var(--accent);
-  line-height: 1;
-}
-.time-unit { font-size: 14px; color: var(--muted); }
-.time-sub { font-size: 12px; color: var(--muted); margin-left: auto; }
-input[type=range] {
-  width: 100%;
-  -webkit-appearance: none;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--border);
-  outline: none;
-  margin-bottom: 10px;
-}
-input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  background: var(--accent);
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-}
-.time-ticks {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: var(--muted);
-  font-family: 'DM Mono', monospace;
-  padding: 0 2px;
-}
-.store-count-hint {
-  margin-top: 10px;
-  background: var(--bg);
-  border-radius: var(--radius);
-  padding: 10px 14px;
-  font-size: 13px;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.store-count-hint strong { color: var(--text); font-size: 15px; }
-
-.toggle-row { display: flex; align-items: center; gap: 12px; }
-.toggle { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
-.toggle input { opacity: 0; width: 0; height: 0; }
-.toggle-slider {
-  position: absolute; inset: 0;
-  background: var(--border);
-  border-radius: 13px;
-  cursor: pointer;
-  transition: 0.2s;
-}
-.toggle-slider::before {
-  content: '';
-  position: absolute;
-  width: 20px; height: 20px;
-  left: 3px; top: 3px;
-  background: white;
-  border-radius: 50%;
-  transition: 0.2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-.toggle input:checked + .toggle-slider { background: var(--text); }
-.toggle input:checked + .toggle-slider::before { transform: translateX(18px); }
-.toggle-label { font-size: 14px; font-weight: 500; }
-
-.btn-main {
-  width: 100%;
-  padding: 15px;
-  background: var(--accent);
-  color: white;
-  border: none;
-  border-radius: var(--radius-lg);
-  font-size: 15px;
-  font-weight: 700;
-  font-family: 'Noto Sans JP', sans-serif;
-  cursor: pointer;
-  letter-spacing: 0.03em;
-  transition: opacity 0.15s, transform 0.1s;
-  margin-top: 4px;
-}
-.btn-main:hover { opacity: 0.9; }
-.btn-main:active { transform: scale(0.98); }
-.btn-main:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-.result-area { margin-top: 6px; }
-.loading-box {
-  display: flex; align-items: center; gap: 12px;
-  padding: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  font-size: 14px;
-  color: var(--muted);
-}
-.spinner {
-  width: 20px; height: 20px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  flex-shrink: 0;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.route-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  margin-bottom: 12px;
-}
-.route-header {
-  background: var(--text);
-  color: #fff;
-  padding: 12px 18px;
-  font-size: 13px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.route-header-right { font-size: 12px; font-weight: 400; color: #A8A6A2; }
-
-/* 時間バー */
-.time-bar-wrap { padding: 12px 18px; background: var(--bg); border-bottom: 1px solid var(--border); }
-.time-bar-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
-.time-bar-track { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
-.time-bar-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.3s; }
-.time-legend { display: flex; gap: 14px; margin-top: 6px; }
-.time-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
-.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
-
-.route-step {
-  display: flex; align-items: flex-start; gap: 14px;
-  padding: 13px 18px;
-  border-bottom: 1px solid var(--bg);
-}
-.route-step:last-child { border-bottom: none; }
-.step-circle {
-  width: 30px; height: 30px;
-  border-radius: 50%;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700;
-  flex-shrink: 0;
-  font-family: 'DM Mono', monospace;
-}
-.step-circle.home { background: var(--text); color: white; border-color: var(--text); font-size: 14px; }
-.step-info { flex: 1; }
-.step-name { font-size: 14px; font-weight: 700; }
-.step-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-.step-time { font-size: 12px; color: var(--accent); font-weight: 500; margin-top: 2px; font-family: 'DM Mono', monospace; }
-.badge {
-  display: inline-block;
-  font-size: 10px; font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 20px;
-  margin-left: 6px;
-  vertical-align: middle;
-}
-.badge-drug { background: var(--drug-bg); color: var(--drug); }
-.badge-super { background: var(--super-bg); color: var(--super); }
-
-.btn-maps {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  width: 100%; padding: 14px;
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--text);
-  border-radius: var(--radius-lg);
-  font-size: 14px; font-weight: 700;
-  font-family: 'Noto Sans JP', sans-serif;
-  cursor: pointer;
-  text-decoration: none;
-  transition: background 0.15s;
-  margin-bottom: 10px;
-}
-.btn-maps:hover { background: var(--bg); }
-.btn-maps svg { width: 18px; height: 18px; }
-.notice { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.6; padding: 0 4px; }
-.error-box {
-  background: #FFF5F5; border: 1px solid #FED7D7;
-  border-radius: var(--radius);
-  padding: 12px 16px; font-size: 13px; color: #C53030;
-  margin-bottom: 12px;
-}
+/* APIキー設定 */
+.apikey-card{background:#FFF8F0;border:1px solid #F6C89A;border-radius:var(--radius-lg);padding:16px;margin-bottom:12px;}
+.apikey-card h3{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px;}
+.apikey-card p{font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:8px;}
+.apikey-card a{color:var(--drug);text-decoration:none;}
+.apikey-row{display:flex;gap:8px;}
+.apikey-row input{flex:1;padding:9px 12px;font-size:12px;font-family:'DM Mono',monospace;border:1px solid var(--border);border-radius:var(--radius);background:#fff;color:var(--text);outline:none;}
+.apikey-btn{padding:9px 14px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.apikey-status{font-size:11px;margin-top:6px;}
+.apikey-status.ok{color:var(--super);}
+.apikey-status.ng{color:#C53030;}
 
 /* 出発地タブ */
-.origin-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.origin-tab {
-  flex: 1;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 700;
-  font-family: 'Noto Sans JP', sans-serif;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  color: var(--muted);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.origin-tab.active {
-  background: var(--text);
-  color: #fff;
-  border-color: var(--text);
-}
-.origin-tab:not(.active):hover { background: var(--border); }
+.origin-tabs{display:flex;gap:8px;margin-bottom:12px;}
+.origin-tab{flex:1;padding:8px;font-size:13px;font-weight:700;font-family:'Noto Sans JP',sans-serif;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--muted);cursor:pointer;transition:all .15s;}
+.origin-tab.active{background:var(--text);color:#fff;border-color:var(--text);}
+.origin-row{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:var(--radius);padding:10px 14px;font-size:14px;font-weight:500;}
+.origin-icon{width:26px;height:26px;background:var(--text);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.origin-icon svg{width:13px;height:13px;fill:#fff;}
+input[type=text]{width:100%;padding:10px 14px;font-size:14px;font-family:'Noto Sans JP',sans-serif;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);outline:none;}
+input[type=text]:focus{border-color:var(--text);}
 
-/* GPS ボタン */
-.btn-gps {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 11px 14px;
-  font-size: 14px;
-  font-weight: 700;
-  font-family: 'Noto Sans JP', sans-serif;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.btn-gps:hover { border-color: var(--accent); color: var(--accent); }
-.btn-gps:disabled { opacity: 0.5; cursor: not-allowed; }
+/* 時間 */
+.time-display{display:flex;align-items:baseline;gap:6px;margin-bottom:12px;}
+.time-value{font-size:32px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent);line-height:1;}
+.time-unit{font-size:14px;color:var(--muted);}
+.time-sub{font-size:12px;color:var(--muted);margin-left:auto;}
+input[type=range]{width:100%;-webkit-appearance:none;height:4px;border-radius:2px;background:var(--border);outline:none;margin-bottom:8px;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2);}
+.time-ticks{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;}
+.hint-box{margin-top:10px;background:var(--bg);border-radius:var(--radius);padding:9px 12px;font-size:12px;color:var(--muted);}
 
-/* GPS 結果 */
-.gps-result {
-  margin-top: 10px;
-  background: var(--bg);
-  border-radius: var(--radius);
-  padding: 10px 14px;
-}
-.gps-coords {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 2px;
-}
-.gps-status {
-  font-size: 11px;
-  color: var(--muted);
-}
-.gps-ok { color: #15803D; }
-.gps-err { color: #C53030; }
+/* エリア・チェーン選択 */
+.area-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.area-chip{border:1px solid var(--border);border-radius:var(--radius);padding:8px 4px;font-size:11px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;background:var(--bg);color:var(--muted);text-align:center;font-weight:500;transition:all .12s;line-height:1.3;}
+.area-chip.on{background:var(--text);border-color:var(--text);color:#fff;}
+.chain-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.chain-chip{border:1px solid var(--border);border-radius:var(--radius);padding:9px 8px;font-size:12px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;background:var(--bg);color:var(--muted);text-align:center;font-weight:500;transition:all .15s;}
+.chain-chip.drug-on{background:var(--drug-bg);border-color:var(--drug-border);color:var(--drug);}
+.chain-chip.super-on{background:var(--super-bg);border-color:var(--super-border);color:var(--super);}
+
+/* 往復トグル */
+.toggle-row{display:flex;align-items:center;gap:12px;}
+.toggle{position:relative;width:44px;height:26px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:13px;cursor:pointer;transition:.2s;}
+.toggle-slider::before{content:'';position:absolute;width:20px;height:20px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.toggle input:checked+.toggle-slider{background:var(--text);}
+.toggle input:checked+.toggle-slider::before{transform:translateX(18px);}
+.toggle-label{font-size:14px;font-weight:500;}
+
+/* ボタン */
+.btn-main{width:100%;padding:14px;background:var(--accent);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:opacity .15s,transform .1s;margin-top:4px;}
+.btn-main:hover{opacity:.9;}
+.btn-main:active{transform:scale(.98);}
+.btn-main:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+
+/* 店舗検索結果 */
+.loading-box{display:flex;align-items:center;gap:12px;padding:16px;background:var(--bg);border-radius:var(--radius);font-size:13px;color:var(--muted);margin-top:10px;}
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.store-group{margin-top:12px;}
+.store-group-title{font-size:11px;font-weight:700;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.store-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);cursor:pointer;transition:all .12s;margin-bottom:4px;}
+.store-item.sel-drug{background:var(--drug-bg);border-color:var(--drug-border);}
+.store-item.sel-super{background:var(--super-bg);border-color:var(--super-border);}
+.check-box{width:20px;height:20px;border-radius:5px;border:1.5px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .12s;}
+.store-item.sel-drug .check-box{background:var(--drug);border-color:var(--drug);}
+.store-item.sel-super .check-box{background:var(--super);border-color:var(--super);}
+.check-box svg{width:11px;height:11px;fill:#fff;display:none;}
+.store-item.sel-drug .check-box svg,.store-item.sel-super .check-box svg{display:block;}
+.store-info{flex:1;min-width:0;}
+.store-name-row{font-size:13px;font-weight:700;}
+.store-addr-row{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;margin-left:4px;vertical-align:middle;}
+.badge-drug{background:var(--drug-bg);color:var(--drug);}
+.badge-super{background:var(--super-bg);color:var(--super);}
+.sel-count{font-size:11px;color:var(--accent);font-weight:700;margin-left:auto;}
+.no-result{text-align:center;padding:20px;color:var(--muted);font-size:13px;}
+
+/* ルート結果 */
+.route-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-top:16px;margin-bottom:12px;}
+.route-header{background:var(--text);color:#fff;padding:12px 16px;font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center;}
+.route-header-right{font-size:11px;font-weight:400;color:#A8A6A2;}
+.time-bar-wrap{padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--border);}
+.time-bar-label{font-size:11px;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between;}
+.time-bar-track{height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.time-bar-fill{height:100%;background:var(--accent);border-radius:3px;}
+.time-legend{display:flex;gap:12px;margin-top:5px;}
+.time-legend-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);}
+.legend-dot{width:7px;height:7px;border-radius:50%;}
+.route-step{display:flex;align-items:flex-start;gap:12px;padding:11px 16px;border-bottom:1px solid var(--bg);}
+.route-step:last-child{border-bottom:none;}
+.step-circle{width:28px;height:28px;border-radius:50%;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:'DM Mono',monospace;}
+.step-circle.home{background:var(--text);color:white;border-color:var(--text);font-size:13px;}
+.step-info{flex:1;}
+.step-name{font-size:14px;font-weight:700;}
+.step-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.step-time{font-size:11px;color:var(--accent);font-weight:500;margin-top:2px;font-family:'DM Mono',monospace;}
+.btn-maps{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:var(--surface);color:var(--text);border:1px solid var(--text);border-radius:var(--radius-lg);font-size:14px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;text-decoration:none;transition:background .15s;margin-bottom:8px;}
+.btn-maps:hover{background:var(--bg);}
+.btn-maps svg{width:18px;height:18px;}
+.notice{font-size:11px;color:var(--muted);text-align:center;line-height:1.6;}
+.error-box{background:#FFF5F5;border:1px solid #FED7D7;border-radius:var(--radius);padding:12px 16px;font-size:13px;color:#C53030;margin-top:10px;}
 </style>
 </head>
 <body>
-
 <header>
   <h1>🛒 せどり巡回ルートプランナー</h1>
-  <p>名古屋市昭和区エリア対応 · AIルート提案</p>
+  <p>愛知・岐阜エリア対応 · Google Places連携</p>
 </header>
-
 <div class="container">
 
-  <div class="card">
-    <div class="card-label">出発地</div>
-    <!-- 切替タブ -->
-    <div class="origin-tabs">
-      <button class="origin-tab active" id="tab-home" onclick="switchOrigin('home')">🏠 自宅</button>
-      <button class="origin-tab" id="tab-current" onclick="switchOrigin('current')">📍 現在地</button>
-    </div>
-    <!-- 自宅表示 -->
-    <div id="origin-home-view" class="origin-row">
-      <div class="origin-icon">
-        <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-      </div>
-      <span>名古屋市昭和区川名本町1-44-A</span>
-    </div>
-    <!-- 現在地表示 -->
-    <div id="origin-current-view" style="display:none;">
-      <button class="btn-gps" id="gpsBtn" onclick="getLocation()">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
-        現在地を取得する
-      </button>
-      <div id="gps-result" class="gps-result" style="display:none;">
-        <div class="gps-coords" id="gps-coords"></div>
-        <div class="gps-status" id="gps-status"></div>
-      </div>
-    </div>
+<!-- APIキー設定 -->
+<div class="apikey-card">
+  <h3>⚙️ Google Places APIキー設定（初回のみ）</h3>
+  <p>店舗を自動検索するにはGoogle Places APIキーが必要です。<br>
+  取得方法：<a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> → 「Places API」を有効化 → APIキーを作成<br>
+  ※月200ドル分の無料枠あり。個人利用では実質無料です。</p>
+  <div class="apikey-row">
+    <input type="password" id="apiKeyInput" placeholder="AIza...">
+    <button class="apikey-btn" onclick="saveApiKey()">保存</button>
   </div>
+  <div class="apikey-status" id="apiKeyStatus"></div>
+</div>
 
-  <div class="card">
-    <div class="card-label">最初の目的地・エリア</div>
-    <input type="text" id="firstStop" placeholder="例：天白区、瑞穂区、中川区など">
+<!-- ① 出発地 -->
+<div class="card">
+  <div class="step-label"><div class="step-num">1</div>出発地</div>
+  <div class="origin-tabs">
+    <button class="origin-tab active" id="tab-home" onclick="switchOrigin('home')">🏠 自宅</button>
+    <button class="origin-tab" id="tab-custom" onclick="switchOrigin('custom')">📍 場所を入力</button>
   </div>
-
-  <div class="card">
-    <div class="card-label">ドラッグストア</div>
-    <div class="chip-grid" id="drug-grid"></div>
+  <div id="origin-home-view" class="origin-row">
+    <div class="origin-icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>
+    <span>名古屋市昭和区川名本町1-44-A</span>
   </div>
-
-  <div class="card">
-    <div class="card-label">スーパー</div>
-    <div class="chip-grid" id="super-grid"></div>
+  <div id="origin-custom-view" style="display:none;">
+    <input type="text" id="customOrigin" placeholder="例：岐阜市柳津町、春日井市など">
   </div>
+</div>
 
-  <!-- 巡回時間 -->
-  <div class="card">
-    <div class="card-label">巡回できる時間</div>
-    <div class="time-display">
-      <span class="time-value" id="timeVal">3</span>
-      <span class="time-unit">時間</span>
-      <span class="time-sub" id="storeHint">最大 <strong id="maxStores">4</strong> 店舗</span>
-    </div>
-    <input type="range" id="timeSlider" min="1" max="6" step="1" value="3" oninput="updateTime()">
-    <div class="time-ticks">
-      <span>1h</span><span>2h</span><span>3h</span><span>4h</span><span>5h</span><span>6h</span>
-    </div>
-    <div class="store-count-hint">
-      🕐 各店舗 <strong>30分</strong> 滞在 ＋ 移動時間（店舗間 約10分）を考慮して提案します
-    </div>
+<!-- ② 巡回時間 -->
+<div class="card">
+  <div class="step-label"><div class="step-num">2</div>巡回できる時間</div>
+  <div class="time-display">
+    <span class="time-value" id="timeVal">3</span>
+    <span class="time-unit">時間</span>
+    <span class="time-sub">最大 <strong id="maxStores">4</strong> 店舗</span>
   </div>
+  <input type="range" id="timeSlider" min="1" max="8" step="1" value="3" oninput="updateTime()">
+  <div class="time-ticks"><span>1h</span><span>2h</span><span>3h</span><span>4h</span><span>5h</span><span>6h</span><span>7h</span><span>8h</span></div>
+  <div class="hint-box">🕐 各店舗30分滞在 ＋ 店舗間移動10分で計算</div>
+</div>
 
-  <div class="card">
-    <div class="toggle-row">
-      <label class="toggle">
-        <input type="checkbox" id="roundtrip" checked onchange="updateTime()">
-        <span class="toggle-slider"></span>
-      </label>
-      <span class="toggle-label">巡回後に自宅へ戻る</span>
-    </div>
+<!-- ③ エリア -->
+<div class="card">
+  <div class="step-label"><div class="step-num">3</div>巡回エリア（複数選択可）</div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">▼ 愛知県 名古屋市</div>
+  <div class="area-grid" id="area-nagoya" style="margin-bottom:10px;"></div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">▼ 愛知県 その他</div>
+  <div class="area-grid" id="area-aichi" style="margin-bottom:10px;"></div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">▼ 岐阜県</div>
+  <div class="area-grid" id="area-gifu"></div>
+</div>
+
+<!-- ④ チェーン選択 -->
+<div class="card">
+  <div class="step-label"><div class="step-num">4</div>チェーン選択</div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">ドラッグストア</div>
+  <div class="chain-grid" id="drug-grid" style="margin-bottom:10px;"></div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">スーパー</div>
+  <div class="chain-grid" id="super-grid"></div>
+</div>
+
+<!-- ⑤ 店舗検索・選択 -->
+<div class="card">
+  <div class="step-label">
+    <div class="step-num">5</div>店舗を検索・選択
+    <span class="sel-count" id="sel-count">0店舗選択中</span>
   </div>
-
-  <button class="btn-main" id="calcBtn" onclick="calcRoute()">
-    AIでルートを提案する →
+  <button class="btn-main" id="searchBtn" onclick="searchStores()" style="margin-top:0;">
+    🔍 周辺の店舗を検索する
   </button>
+  <div id="store-results"></div>
+</div>
 
-  <div class="result-area" id="result"></div>
+<!-- 往復 -->
+<div class="card">
+  <div class="toggle-row">
+    <label class="toggle">
+      <input type="checkbox" id="roundtrip" checked onchange="updateTime()">
+      <span class="toggle-slider"></span>
+    </label>
+    <span class="toggle-label">巡回後に出発地へ戻る</span>
+  </div>
+</div>
+
+<button class="btn-main" id="routeBtn" onclick="calcRoute()">⑥ 効率的なルートを計算する →</button>
+<div id="route-result"></div>
 
 </div>
 
 <script>
 const HOME_ADDR = '名古屋市昭和区川名本町1-44-A';
-const ORIGIN = HOME_ADDR; // 後方互換のため残す
-const DRUG_STORES = ['Vドラッグ', 'ツルハドラッグ'];
-const SUPER_STORES = ['ピアゴ', 'アピタ', 'ピアゴパワー', 'ピアゴラフーズコア', 'アピタパワー'];
-const STAY_MIN = 30;
-const DRIVE_MIN = 10;
-const HOME_DRIVE_MIN = 20;
+const STAY_MIN=30, DRIVE_MIN=10, HOME_DRIVE_MIN=20;
 
-let selDrug = new Set(DRUG_STORES);
-let selSuper = new Set(SUPER_STORES);
-let originMode = 'home'; // 'home' | 'current'
-let currentLatLng = null; // { lat, lng, label }
+const NAGOYA_AREAS=[
+  '名古屋市天白区','名古屋市瑞穂区','名古屋市昭和区','名古屋市名東区',
+  '名古屋市守山区','名古屋市北区','名古屋市緑区','名古屋市中川区',
+  '名古屋市港区','名古屋市西区','名古屋市中村区','名古屋市千種区',
+  '名古屋市中区','名古屋市南区','名古屋市熱田区','名古屋市東区'
+];
+const AICHI_AREAS=[
+  '春日井市','一宮市','瀬戸市','小牧市','豊田市','岡崎市',
+  '豊橋市','刈谷市','大府市','日進市','長久手市','みよし市','尾張旭市'
+];
+const GIFU_AREAS=['岐阜市','各務原市','大垣市','多治見市','可児市','関市','美濃加茂市'];
 
-/* --- 出発地切替 --- */
-function switchOrigin(mode) {
-  originMode = mode;
-  document.getElementById('tab-home').classList.toggle('active', mode === 'home');
-  document.getElementById('tab-current').classList.toggle('active', mode === 'current');
-  document.getElementById('origin-home-view').style.display = mode === 'home' ? '' : 'none';
-  document.getElementById('origin-current-view').style.display = mode === 'current' ? '' : 'none';
+const DRUG_CHAINS=['Vドラッグ','ツルハドラッグ'];
+const SUPER_CHAINS=['ピアゴ','アピタ','ピアゴパワー','ピアゴラフーズコア','アピタパワー'];
+const CHAIN_TYPES={};
+DRUG_CHAINS.forEach(c=>CHAIN_TYPES[c]='drug');
+SUPER_CHAINS.forEach(c=>CHAIN_TYPES[c]='super');
+
+let originMode='home';
+let selAreas=new Set();
+let selChains=new Set([...DRUG_CHAINS,...SUPER_CHAINS]);
+let foundStores=[];   // {id,name,addr,lat,lng,type,chain}
+let selStoreIds=new Set();
+let apiKey='';
+
+// ===== APIキー =====
+window.onload=()=>{
+  const saved=localStorage.getItem('gplaces_key');
+  if(saved){apiKey=saved;document.getElementById('apiKeyInput').value=saved;showKeyStatus(true);}
+};
+function saveApiKey(){
+  const v=document.getElementById('apiKeyInput').value.trim();
+  if(!v){showKeyStatus(false,'キーを入力してください');return;}
+  apiKey=v;
+  localStorage.setItem('gplaces_key',v);
+  showKeyStatus(true);
+}
+function showKeyStatus(ok,msg=''){
+  const el=document.getElementById('apiKeyStatus');
+  if(ok){el.className='apikey-status ok';el.textContent='✓ APIキーを保存しました';}
+  else{el.className='apikey-status ng';el.textContent='✗ '+(msg||'無効なキーです');}
 }
 
-/* --- GPS取得 --- */
-function getLocation() {
-  const btn = document.getElementById('gpsBtn');
-  const resultEl = document.getElementById('gps-result');
-  const coordsEl = document.getElementById('gps-coords');
-  const statusEl = document.getElementById('gps-status');
-
-  if (!navigator.geolocation) {
-    resultEl.style.display = '';
-    coordsEl.textContent = '現在地取得非対応';
-    statusEl.textContent = 'このブラウザはGeolocationに対応していません';
-    statusEl.className = 'gps-status gps-err';
-    return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = '取得中…';
-  resultEl.style.display = 'none';
-
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      const lat = pos.coords.latitude.toFixed(6);
-      const lng = pos.coords.longitude.toFixed(6);
-      currentLatLng = { lat: parseFloat(lat), lng: parseFloat(lng), label: `現在地 (${lat}, ${lng})` };
-      resultEl.style.display = '';
-      coordsEl.textContent = `📍 ${lat}, ${lng}`;
-      statusEl.innerHTML = '<span class="gps-ok">✓ 現在地を取得しました</span>';
-      btn.textContent = '再取得する';
-      btn.disabled = false;
-    },
-    err => {
-      const msgs = { 1:'位置情報の許可が必要です', 2:'現在地を取得できませんでした', 3:'タイムアウトしました' };
-      resultEl.style.display = '';
-      coordsEl.textContent = 'エラー';
-      statusEl.innerHTML = `<span class="gps-err">✗ ${msgs[err.code] || 'エラー'}</span>`;
-      btn.textContent = '再取得する';
-      btn.disabled = false;
-    },
-    { timeout: 10000, enableHighAccuracy: true }
-  );
+// ===== 出発地 =====
+function switchOrigin(m){
+  originMode=m;
+  document.getElementById('tab-home').classList.toggle('active',m==='home');
+  document.getElementById('tab-custom').classList.toggle('active',m==='custom');
+  document.getElementById('origin-home-view').style.display=m==='home'?'':'none';
+  document.getElementById('origin-custom-view').style.display=m==='custom'?'':'none';
 }
 
-function calcMaxStores(hours) {
-  const roundtrip = document.getElementById('roundtrip').checked;
-  const totalMin = hours * 60;
-  // 往復時は自宅↔エリア×2分を引く、片道は×1
-  const driveBudget = roundtrip ? HOME_DRIVE_MIN * 2 : HOME_DRIVE_MIN;
-  const budget = totalMin - driveBudget;
-  // 1店舗あたり: 滞在30分 + 移動10分（最初の移動は自宅→1店目でカバー済み）
-  const n = Math.floor(budget / (STAY_MIN + DRIVE_MIN));
-  return Math.max(1, Math.min(n, 6)); // 最大6件（Google Maps上限）
+// ===== 時間 =====
+function calcMaxStores(h){
+  const rt=document.getElementById('roundtrip').checked;
+  return Math.max(1,Math.min(Math.floor((h*60-HOME_DRIVE_MIN*(rt?2:1))/(STAY_MIN+DRIVE_MIN)),8));
 }
-
-function updateTime() {
-  const h = parseInt(document.getElementById('timeSlider').value);
-  document.getElementById('timeVal').textContent = h;
-  const max = calcMaxStores(h);
-  document.getElementById('maxStores').textContent = max;
+function updateTime(){
+  const h=parseInt(document.getElementById('timeSlider').value);
+  document.getElementById('timeVal').textContent=h;
+  document.getElementById('maxStores').textContent=calcMaxStores(h);
 }
 updateTime();
 
-function renderChips(stores, set, gridId, cls) {
-  const grid = document.getElementById(gridId);
-  grid.innerHTML = '';
-  stores.forEach(s => {
-    const chip = document.createElement('button');
-    chip.className = 'chip' + (set.has(s) ? ' ' + cls + '-on' : '');
-    chip.textContent = s;
-    chip.onclick = () => {
-      set.has(s) ? set.delete(s) : set.add(s);
-      renderChips(stores, set, gridId, cls);
-    };
-    grid.appendChild(chip);
+// ===== エリアチップ =====
+function renderAreaGrid(areas,gridId){
+  const g=document.getElementById(gridId);g.innerHTML='';
+  areas.forEach(a=>{
+    const c=document.createElement('button');
+    c.className='area-chip'+(selAreas.has(a)?' on':'');
+    c.textContent=a.replace('名古屋市','').replace(/([市区])$/,'$1')||a;
+    c.title=a;
+    c.onclick=()=>{selAreas.has(a)?selAreas.delete(a):selAreas.add(a);renderAreaGrid(areas,gridId);};
+    g.appendChild(c);
   });
 }
-renderChips(DRUG_STORES, selDrug, 'drug-grid', 'drug');
-renderChips(SUPER_STORES, selSuper, 'super-grid', 'super');
+renderAreaGrid(NAGOYA_AREAS,'area-nagoya');
+renderAreaGrid(AICHI_AREAS,'area-aichi');
+renderAreaGrid(GIFU_AREAS,'area-gifu');
 
-async function calcRoute() {
-  const firstStop = document.getElementById('firstStop').value.trim();
-  const roundtrip = document.getElementById('roundtrip').checked;
-  const hours = parseInt(document.getElementById('timeSlider').value);
-  const maxStores = calcMaxStores(hours);
-  const resultDiv = document.getElementById('result');
-  const btn = document.getElementById('calcBtn');
-  const chains = [...selDrug, ...selSuper];
+// ===== チェーンチップ =====
+function renderChainGrid(chains,gridId,cls){
+  const g=document.getElementById(gridId);g.innerHTML='';
+  chains.forEach(c=>{
+    const btn=document.createElement('button');
+    btn.className='chain-chip'+(selChains.has(c)?' '+cls+'-on':'');
+    btn.textContent=c;
+    btn.onclick=()=>{selChains.has(c)?selChains.delete(c):selChains.add(c);renderChainGrid(chains,gridId,cls);};
+    g.appendChild(btn);
+  });
+}
+renderChainGrid(DRUG_CHAINS,'drug-grid','drug');
+renderChainGrid(SUPER_CHAINS,'super-grid','super');
 
-  // 出発地の決定
-  let originAddr, originDisplay, originForMaps;
-  if (originMode === 'current') {
-    if (!currentLatLng) {
-      showError('「現在地を取得する」ボタンを押して位置情報を取得してください');
-      return;
+// ===== 店舗検索 =====
+async function searchStores(){
+  if(!apiKey){
+    document.getElementById('store-results').innerHTML='<div class="error-box">⚠️ 上のAPIキー欄にGoogle Places APIキーを入力・保存してください</div>';
+    return;
+  }
+  if(selAreas.size===0){document.getElementById('store-results').innerHTML='<div class="error-box">⚠️ ③でエリアを選択してください</div>';return;}
+  if(selChains.size===0){document.getElementById('store-results').innerHTML='<div class="error-box">⚠️ チェーンを選択してください</div>';return;}
+
+  const btn=document.getElementById('searchBtn');
+  btn.disabled=true;
+  document.getElementById('store-results').innerHTML='<div class="loading-box"><div class="spinner"></div>店舗を検索しています…</div>';
+  foundStores=[];selStoreIds.clear();
+
+  const areas=[...selAreas];
+  const chains=[...selChains];
+
+  // エリア×チェーンで検索
+  for(const area of areas){
+    for(const chain of chains){
+      await searchPlaces(chain, area);
+      await new Promise(r=>setTimeout(r,200)); // レート制限対策
     }
-    originAddr = `緯度${currentLatLng.lat} 経度${currentLatLng.lng}付近`;
-    originDisplay = currentLatLng.label;
-    originForMaps = `${currentLatLng.lat},${currentLatLng.lng}`;
-  } else {
-    originAddr = HOME_ADDR;
-    originDisplay = HOME_ADDR;
-    originForMaps = HOME_ADDR;
   }
 
-  if (!firstStop) { showError('最初の目的地を入力してください'); return; }
-  if (chains.length === 0) { showError('店舗チェーンを1つ以上選択してください'); return; }
+  renderStoreResults();
+  btn.disabled=false;
+}
 
-  btn.disabled = true;
-  resultDiv.innerHTML = '<div class="loading-box"><div class="spinner"></div>AIが周辺店舗を検索してルートを組み立てています…</div>';
-
-  const prompt = `名古屋市「${firstStop}」周辺にある以下のチェーン店舗を【必ず${maxStores}件以内】でピックアップしてください。
-対象チェーン：${chains.join('、')}
-
-厳守事項：
-- 返す店舗数は最大${maxStores}件（超えないこと）
-- 実在する店舗名（例：Vドラッグ天白荒池店、ピアゴ植田店）を具体的に記載
-- 出発点「${originAddr}」から、${firstStop}周辺を効率よく巡回できる順番に並べる
-- ${roundtrip ? '最後の店舗は出発地方向に戻りやすい位置にする' : '片道ルートで提案する'}
-- チェーンが複数ある場合は各チェーンから均等にピックアップする
-- 対象チェーン以外の店舗は絶対に含めない
-
-必ずこのJSON形式のみで回答（前後に説明文・コードブロック記号は一切不要）：
-{"stores":[{"name":"店舗名","chain":"チェーン名","area":"エリア（例：天白区）"}]}`;
-
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer sk-proj-NtI-nEgWZ00NNobYrIzVuXEo3iFMlb_BzlipgrM8kkUeXxMIXqcMffEyPbNb3etprQ9v5KOKZLT3BlbkFJkpCzqz8EOTb9rm_8Wc-u_l8flfaKYgiU_wsyI' },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message || 'API error');
-    const text = data.choices[0].message.content;
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('JSON not found');
-    const parsed = JSON.parse(jsonMatch[0]);
-    const stores = (parsed.stores || []).slice(0, maxStores);
-
-    if (stores.length === 0) {
-      showError('店舗が見つかりませんでした。別のエリアで試してください');
-      btn.disabled = false; return;
+async function searchPlaces(chain, area){
+  const query=`${chain} ${area}`;
+  const url=`https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&language=ja&key=${apiKey}`;
+  try{
+    const res=await fetch(url);
+    const data=await res.json();
+    if(data.status==='OK'||data.status==='ZERO_RESULTS'){
+      (data.results||[]).forEach(p=>{
+        // 重複チェック
+        if(foundStores.find(s=>s.id===p.place_id)) return;
+        // チェーン名が店舗名に含まれるか確認
+        const nameMatch=DRUG_CHAINS.concat(SUPER_CHAINS).some(c=>p.name.includes(c.replace('ドラッグ','').replace('ピアゴ','ピアゴ').slice(0,4)));
+        foundStores.push({
+          id:p.place_id,
+          name:p.name,
+          addr:p.formatted_address?.replace('日本、','').replace('〒\\d{3}-\\d{4} ',''),
+          lat:p.geometry?.location?.lat,
+          lng:p.geometry?.location?.lng,
+          type:CHAIN_TYPES[chain]||'drug',
+          chain:chain,
+          area:area
+        });
+      });
+    }else if(data.status==='REQUEST_DENIED'){
+      throw new Error('APIキーが無効です: '+data.error_message);
     }
+  }catch(e){
+    console.error(e);
+    if(e.message.includes('APIキー')){
+      document.getElementById('store-results').innerHTML=`<div class="error-box">⚠️ ${e.message}</div>`;
+    }
+  }
+}
 
-    // 時間内訳を計算
-    const totalMin = hours * 60;
-    const stayTotal = stores.length * STAY_MIN;
-    const driveTotal = (stores.length - 1) * DRIVE_MIN + HOME_DRIVE_MIN * (roundtrip ? 2 : 1);
-    const usedMin = stayTotal + driveTotal;
-    const usedPct = Math.min(100, Math.round(usedMin / totalMin * 100));
-    const stayPct = Math.round(stayTotal / totalMin * 100);
-    const drivePct = Math.round(driveTotal / totalMin * 100);
+function renderStoreResults(){
+  const div=document.getElementById('store-results');
+  if(foundStores.length===0){
+    div.innerHTML='<div class="no-result">店舗が見つかりませんでした。エリアやチェーンを確認してください。</div>';
+    return;
+  }
 
-    // Google Maps URL
-    const enc = encodeURIComponent;
-    const dest = roundtrip ? enc(originForMaps) : enc(stores[stores.length - 1].name + ' 名古屋');
-    const wayArr = roundtrip ? stores : stores.slice(0, -1);
-    const waypoints = wayArr.map(s => enc(s.name + ' 名古屋')).join('|');
-    const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${enc(originForMaps)}&destination=${dest}&travelmode=driving&waypoints=optimize:true|${waypoints}`;
+  // チェーンごとにグループ化
+  const groups={};
+  foundStores.forEach(s=>{
+    if(!groups[s.chain])groups[s.chain]=[];
+    groups[s.chain].push(s);
+  });
 
-    // 累積時間を計算して各ステップに表示
-    let cumMin = HOME_DRIVE_MIN;
-    let stepsHtml = `
-      <div class="route-step">
-        <div class="step-circle home">${originMode === 'current' ? '📍' : '🏠'}</div>
-        <div class="step-info">
-          <div class="step-name">出発</div>
-          <div class="step-sub">${originDisplay}</div>
-          <div class="step-time">0:00 出発</div>
+  let html='<div style="margin-top:10px;font-size:12px;color:var(--muted);margin-bottom:8px;">タップして選択してください</div>';
+  Object.entries(groups).forEach(([chain,stores])=>{
+    const isDrug=DRUG_CHAINS.includes(chain);
+    html+=`<div class="store-group">
+      <div class="store-group-title">
+        <span class="badge badge-${isDrug?'drug':'super'}">${isDrug?'薬':'食'}</span>${chain}（${stores.length}件）
+      </div>`;
+    stores.forEach(s=>{
+      const isSel=selStoreIds.has(s.id);
+      const selCls=isSel?(isDrug?'sel-drug':'sel-super'):'';
+      html+=`<div class="store-item ${selCls}" onclick="toggleStore('${s.id}')">
+        <div class="check-box"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="2" fill="none"/></svg></div>
+        <div class="store-info">
+          <div class="store-name-row">${s.name}</div>
+          <div class="store-addr-row">${s.addr||s.area}</div>
         </div>
       </div>`;
-
-    stores.forEach((s, i) => {
-      const isDrug = DRUG_STORES.includes(s.chain);
-      const badge = isDrug
-        ? '<span class="badge badge-drug">薬</span>'
-        : '<span class="badge badge-super">食</span>';
-      const arrH = Math.floor(cumMin / 60);
-      const arrM = String(cumMin % 60).padStart(2, '0');
-      const depMin = cumMin + STAY_MIN;
-      const depH = Math.floor(depMin / 60);
-      const depM = String(depMin % 60).padStart(2, '0');
-      stepsHtml += `
-        <div class="route-step">
-          <div class="step-circle">${i + 1}</div>
-          <div class="step-info">
-            <div class="step-name">${s.name}${badge}</div>
-            <div class="step-sub">${s.area}</div>
-            <div class="step-time">到着 ${arrH}:${arrM} → 出発 ${depH}:${depM}（滞在30分）</div>
-          </div>
-        </div>`;
-      cumMin = depMin + DRIVE_MIN;
     });
-
-    if (roundtrip) {
-      const retH = Math.floor(cumMin / 60);
-      const retM = String(cumMin % 60).padStart(2, '0');
-      stepsHtml += `
-        <div class="route-step">
-          <div class="step-circle home">${originMode === 'current' ? '📍' : '🏠'}</div>
-          <div class="step-info">
-            <div class="step-name">帰着</div>
-            <div class="step-sub">${originDisplay}</div>
-            <div class="step-time">約 ${retH}:${retM} 帰着</div>
-          </div>
-        </div>`;
-    }
-
-    const usedH = Math.floor(usedMin / 60);
-    const usedM = usedMin % 60;
-    const usedStr = usedM > 0 ? `${usedH}時間${usedM}分` : `${usedH}時間`;
-
-    resultDiv.innerHTML = `
-      <div style="height:16px"></div>
-      <div class="route-card">
-        <div class="route-header">
-          <span>📍 AIが提案するルート（${stores.length}店舗）</span>
-          <span class="route-header-right">合計 ${usedStr} / ${hours}時間</span>
-        </div>
-        <div class="time-bar-wrap">
-          <div class="time-bar-label">
-            <span>時間の内訳</span>
-            <span>${usedStr} 使用</span>
-          </div>
-          <div class="time-bar-track">
-            <div class="time-bar-fill" style="width:${usedPct}%"></div>
-          </div>
-          <div class="time-legend">
-            <div class="time-legend-item"><div class="legend-dot" style="background:var(--accent)"></div>滞在 ${stayTotal}分</div>
-            <div class="time-legend-item"><div class="legend-dot" style="background:var(--border)"></div>移動 約${driveTotal}分</div>
-          </div>
-        </div>
-        ${stepsHtml}
-      </div>
-      <a class="btn-maps" href="${mapsUrl}" target="_blank">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-        Googleマップで最適ルートを開く
-      </a>
-      <p class="notice">※AIが生成した店舗候補です。実在確認はGoogleマップでご確認ください。<br>時刻は出発を0:00とした経過時間の目安です。</p>
-    `;
-  } catch (e) {
-    console.error(e);
-    showError('エラーが発生しました。エリア名を変えてもう一度お試しください。');
-  }
-  btn.disabled = false;
-}
-
-function showError(msg) {
-  document.getElementById('result').innerHTML = `<div style="height:12px"></div><div class="error-box">⚠️ ${msg}</div>`;
-  document.getElementById('calcBtn').disabled = false;
-}
-</script>
-
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(() => console.log('SW登録完了'))
-      .catch(e => console.log('SW登録失敗:', e));
+    html+='</div>';
   });
+  div.innerHTML=html;
+  updateSelCount();
+}
+
+function toggleStore(id){
+  if(selStoreIds.has(id))selStoreIds.delete(id);
+  else selStoreIds.add(id);
+  // 表示更新
+  const store=foundStores.find(s=>s.id===id);
+  if(!store)return;
+  const isDrug=DRUG_CHAINS.includes(store.chain);
+  const el=document.querySelector(`[onclick="toggleStore('${id}')"]`);
+  if(el){
+    el.classList.toggle('sel-drug',selStoreIds.has(id)&&isDrug);
+    el.classList.toggle('sel-super',selStoreIds.has(id)&&!isDrug);
+  }
+  updateSelCount();
+}
+function updateSelCount(){
+  document.getElementById('sel-count').textContent=`${selStoreIds.size}店舗選択中`;
+}
+
+// ===== ルート計算 =====
+function calcRoute(){
+  const hours=parseInt(document.getElementById('timeSlider').value);
+  const maxStores=calcMaxStores(hours);
+  const roundtrip=document.getElementById('roundtrip').checked;
+  const resultDiv=document.getElementById('route-result');
+
+  let originAddr,originDisplay;
+  if(originMode==='custom'){
+    const v=document.getElementById('customOrigin').value.trim();
+    if(!v){resultDiv.innerHTML='<div class="error-box">⚠️ 出発地を入力してください</div>';return;}
+    originAddr=v;originDisplay=v;
+  }else{originAddr=HOME_ADDR;originDisplay='自宅（'+HOME_ADDR+'）';}
+
+  const selectedStores=foundStores.filter(s=>selStoreIds.has(s.id)).slice(0,maxStores);
+  if(selectedStores.length===0){resultDiv.innerHTML='<div class="error-box">⚠️ ⑤で店舗を選択してください</div>';return;}
+
+  const totalMin=hours*60;
+  const stayTotal=selectedStores.length*STAY_MIN;
+  const driveTotal=(selectedStores.length-1)*DRIVE_MIN+HOME_DRIVE_MIN*(roundtrip?2:1);
+  const usedMin=stayTotal+driveTotal;
+  const usedPct=Math.min(100,Math.round(usedMin/totalMin*100));
+  const usedH=Math.floor(usedMin/60),usedM=usedMin%60;
+  const usedStr=usedM>0?`${usedH}時間${usedM}分`:`${usedH}時間`;
+
+  const overMsg=selStoreIds.size>maxStores?`<div style="font-size:12px;color:var(--accent);margin-bottom:8px;">⚠️ 時間内は${maxStores}店舗まで。${selStoreIds.size-maxStores}店舗は除外しました。</div>`:'';
+
+  // Google Maps URL（緯度経度があればそちらを優先）
+  const enc=encodeURIComponent;
+  const getWp=s=>s.lat&&s.lng?`${s.lat},${s.lng}`:enc(s.name);
+  const dest=roundtrip?enc(originAddr):getWp(selectedStores[selectedStores.length-1]);
+  const wayArr=roundtrip?selectedStores:selectedStores.slice(0,-1);
+  const waypoints=wayArr.map(s=>getWp(s)).join('|');
+  const mapsUrl=`https://www.google.com/maps/dir/?api=1&origin=${enc(originAddr)}&destination=${dest}&travelmode=driving&waypoints=optimize:true|${waypoints}`;
+
+  let cumMin=HOME_DRIVE_MIN;
+  let stepsHtml=`<div class="route-step"><div class="step-circle home">🏠</div><div class="step-info"><div class="step-name">出発</div><div class="step-sub">${originDisplay}</div><div class="step-time">0:00 出発</div></div></div>`;
+
+  selectedStores.forEach((s,i)=>{
+    const isDrug=DRUG_CHAINS.includes(s.chain);
+    const badge=`<span class="badge badge-${isDrug?'drug':'super'}">${isDrug?'薬':'食'}</span>`;
+    const arrH=Math.floor(cumMin/60),arrM=String(cumMin%60).padStart(2,'0');
+    const depMin=cumMin+STAY_MIN,depH=Math.floor(depMin/60),depM=String(depMin%60).padStart(2,'0');
+    stepsHtml+=`<div class="route-step"><div class="step-circle">${i+1}</div><div class="step-info"><div class="step-name">${s.name}${badge}</div><div class="step-sub">${s.addr||s.area}</div><div class="step-time">到着 ${arrH}:${arrM} → 出発 ${depH}:${depM}（滞在30分）</div></div></div>`;
+    cumMin=depMin+DRIVE_MIN;
+  });
+
+  if(roundtrip){
+    const retH=Math.floor(cumMin/60),retM=String(cumMin%60).padStart(2,'0');
+    stepsHtml+=`<div class="route-step"><div class="step-circle home">🏠</div><div class="step-info"><div class="step-name">帰着</div><div class="step-sub">${originDisplay}</div><div class="step-time">約 ${retH}:${retM} 帰着</div></div></div>`;
+  }
+
+  resultDiv.innerHTML=`
+    ${overMsg}
+    <div class="route-card">
+      <div class="route-header"><span>📍 巡回ルート（${selectedStores.length}店舗）</span><span class="route-header-right">${usedStr} / ${hours}時間</span></div>
+      <div class="time-bar-wrap">
+        <div class="time-bar-label"><span>時間の内訳</span><span>${usedStr} 使用</span></div>
+        <div class="time-bar-track"><div class="time-bar-fill" style="width:${usedPct}%"></div></div>
+        <div class="time-legend">
+          <div class="time-legend-item"><div class="legend-dot" style="background:var(--accent)"></div>滞在 ${stayTotal}分</div>
+          <div class="time-legend-item"><div class="legend-dot" style="background:var(--border)"></div>移動 約${driveTotal}分</div>
+        </div>
+      </div>
+      ${stepsHtml}
+    </div>
+    <a class="btn-maps" href="${mapsUrl}" target="_blank">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      Googleマップで最適ルートを開く
+    </a>
+    <p class="notice">Googleマップが自動で最短順に並び替えます</p>`;
 }
 </script>
 </body>
