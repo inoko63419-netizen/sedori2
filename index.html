@@ -620,18 +620,18 @@ async function calcRoute() {
 {"stores":[{"name":"店舗名","chain":"チェーン名","area":"エリア（例：天白区）"}]}`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': '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', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer sk-proj-NtI-nEgWZ00NNobYrIzVuXEo3iFMlb_BzlipgrM8kkUeXxMIXqcMffEyPbNb3etprQ9v5KOKZLT3BlbkFJkpCzqz8EOTb9rm_8Wc-u_l8flfaKYgiU_wsyI' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'gpt-4o-mini',
         max_tokens: 1000,
         messages: [{ role: 'user', content: prompt }]
       })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message || 'API error');
-    const text = data.content.map(b => b.text || '').join('');
+    const text = data.choices[0].message.content;
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('JSON not found');
     const parsed = JSON.parse(jsonMatch[0]);
