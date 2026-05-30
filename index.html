@@ -325,6 +325,22 @@ renderChainGrid(DRUG_CHAINS,'drug-grid','drug');
 renderChainGrid(SUPER_CHAINS,'super-grid','super');
 
 // ===== 店舗検索 =====
+// Google Maps JS APIを動的ロード
+function loadGoogleMapsAPI(key){
+  return new Promise((resolve,reject)=>{
+    if(window.google&&window.google.maps&&window.google.maps.places){resolve();return;}
+    // 既存のスクリプトタグがあれば削除
+    const existing=document.getElementById('gmaps-script');
+    if(existing)existing.remove();
+    const s=document.createElement('script');
+    s.id='gmaps-script';
+    s.src=`https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&language=ja`;
+    s.onload=resolve;
+    s.onerror=()=>reject(new Error('Google Maps APIの読み込みに失敗しました'));
+    document.head.appendChild(s);
+  });
+}
+
 async function searchStores(){
   if(!apiKey){
     document.getElementById('store-results').innerHTML='<div class="error-box">⚠️ 上のAPIキー欄にGoogle Places APIキーを入力・保存してください</div>';
@@ -335,17 +351,26 @@ async function searchStores(){
 
   const btn=document.getElementById('searchBtn');
   btn.disabled=true;
-  document.getElementById('store-results').innerHTML='<div class="loading-box"><div class="spinner"></div>店舗を検索しています…</div>';
+  document.getElementById('store-results').innerHTML='<div class="loading-box"><div class="spinner"></div>Google Mapsを読み込んでいます…</div>';
   foundStores=[];selStoreIds.clear();
 
+  try{
+    await loadGoogleMapsAPI(apiKey);
+  }catch(e){
+    document.getElementById('store-results').innerHTML='<div class="error-box">⚠️ APIキーが無効か、Maps JavaScript APIが有効になっていません。Google Cloud ConsoleでMaps JavaScript APIとPlaces APIの両方を有効にしてください。</div>';
+    btn.disabled=false;return;
+  }
+
+  document.getElementById('store-results').innerHTML='<div class="loading-box"><div class="spinner"></div>店舗を検索しています…</div>';
+
+  const service=new google.maps.places.PlacesService(document.createElement('div'));
   const areas=[...selAreas];
   const chains=[...selChains];
 
-  // エリア×チェーンで検索
   for(const area of areas){
     for(const chain of chains){
-      await searchPlaces(chain, area);
-      await new Promise(r=>setTimeout(r,200)); // レート制限対策
+      await searchPlaces(service, chain, area);
+      await new Promise(r=>setTimeout(r,300));
     }
   }
 
@@ -353,38 +378,27 @@ async function searchStores(){
   btn.disabled=false;
 }
 
-async function searchPlaces(chain, area){
-  const query=`${chain} ${area}`;
-  const url=`https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&language=ja&key=${apiKey}`;
-  try{
-    const res=await fetch(url);
-    const data=await res.json();
-    if(data.status==='OK'||data.status==='ZERO_RESULTS'){
-      (data.results||[]).forEach(p=>{
-        // 重複チェック
-        if(foundStores.find(s=>s.id===p.place_id)) return;
-        // チェーン名が店舗名に含まれるか確認
-        const nameMatch=DRUG_CHAINS.concat(SUPER_CHAINS).some(c=>p.name.includes(c.replace('ドラッグ','').replace('ピアゴ','ピアゴ').slice(0,4)));
-        foundStores.push({
-          id:p.place_id,
-          name:p.name,
-          addr:p.formatted_address?.replace('日本、','').replace('〒\\d{3}-\\d{4} ',''),
-          lat:p.geometry?.location?.lat,
-          lng:p.geometry?.location?.lng,
-          type:CHAIN_TYPES[chain]||'drug',
-          chain:chain,
-          area:area
+function searchPlaces(service, chain, area){
+  return new Promise(resolve=>{
+    service.textSearch({query:`${chain} ${area}`, language:'ja'}, (results,status)=>{
+      if(status===google.maps.places.PlacesServiceStatus.OK){
+        (results||[]).forEach(p=>{
+          if(foundStores.find(s=>s.id===p.place_id))return;
+          foundStores.push({
+            id:p.place_id,
+            name:p.name,
+            addr:(p.formatted_address||'').replace('日本、','').replace(/〒\d{3}-\d{4} /,''),
+            lat:p.geometry?.location?.lat(),
+            lng:p.geometry?.location?.lng(),
+            type:CHAIN_TYPES[chain]||'drug',
+            chain:chain,
+            area:area
+          });
         });
-      });
-    }else if(data.status==='REQUEST_DENIED'){
-      throw new Error('APIキーが無効です: '+data.error_message);
-    }
-  }catch(e){
-    console.error(e);
-    if(e.message.includes('APIキー')){
-      document.getElementById('store-results').innerHTML=`<div class="error-box">⚠️ ${e.message}</div>`;
-    }
-  }
+      }
+      resolve();
+    });
+  });
 }
 
 function renderStoreResults(){
