@@ -167,7 +167,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 
 <!-- ② 巡回時間 -->
 <div class="card">
-  <div class="step-label"><div class="step-num">2</div>巡回できる時間</div>
+  <div class="step-label"><div class="step-num">2</div>巡回できる時間・滞在時間</div>
   <div class="time-display">
     <span class="time-value" id="timeVal">3</span>
     <span class="time-unit">時間</span>
@@ -175,7 +175,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
   </div>
   <input type="range" id="timeSlider" min="1" max="8" step="1" value="3" oninput="updateTime()">
   <div class="time-ticks"><span>1h</span><span>2h</span><span>3h</span><span>4h</span><span>5h</span><span>6h</span><span>7h</span><span>8h</span></div>
-  <div class="hint-box">🕐 各店舗30分滞在 ＋ 店舗間移動10分で計算</div>
+  <div style="margin-top:12px;">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">🕐 1店舗あたりの滞在時間</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;" id="stay-grid"></div>
+  </div>
+  <div class="hint-box" id="stay-hint">各店舗 <strong id="stayVal">30</strong>分滞在 ＋ 店舗間移動10分で計算</div>
 </div>
 
 <!-- ③ エリア -->
@@ -238,7 +242,24 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 
 <script>
 const HOME_ADDR = '名古屋市昭和区川名本町1-44-A';
-const STAY_MIN=30, DRIVE_MIN=10, HOME_DRIVE_MIN=20;
+const DRIVE_MIN=10, HOME_DRIVE_MIN=20;
+const STAY_OPTIONS=[15,20,30,45,60,90];
+let selStayMin=30; // 選択中の滞在時間
+
+// 滞在時間チップ
+function renderStayGrid(){
+  const g=document.getElementById('stay-grid');
+  g.innerHTML='';
+  STAY_OPTIONS.forEach(m=>{
+    const btn=document.createElement('button');
+    btn.className='area-chip'+(selStayMin===m?' on':'');
+    btn.textContent=m+'分';
+    btn.onclick=()=>{selStayMin=m;renderStayGrid();updateTime();};
+    g.appendChild(btn);
+  });
+  document.getElementById('stayVal').textContent=selStayMin;
+}
+renderStayGrid();
 
 const NAGOYA_AREAS=[
   '名古屋市天白区','名古屋市瑞穂区','名古屋市昭和区','名古屋市名東区',
@@ -295,7 +316,7 @@ function switchOrigin(m){
 // ===== 時間 =====
 function calcMaxStores(h){
   const rt=document.getElementById('roundtrip').checked;
-  return Math.max(1,Math.min(Math.floor((h*60-HOME_DRIVE_MIN*(rt?2:1))/(STAY_MIN+DRIVE_MIN)),8));
+  return Math.max(1,Math.min(Math.floor((h*60-HOME_DRIVE_MIN*(rt?2:1))/(selStayMin+DRIVE_MIN)),8));
 }
 function updateTime(){
   const h=parseInt(document.getElementById('timeSlider').value);
@@ -580,11 +601,8 @@ function calcRoute(){
   const selectedStores=foundStores.filter(s=>selStoreIds.has(s.id)).slice(0,maxStores);
   if(selectedStores.length===0){resultDiv.innerHTML='<div class="error-box">⚠️ ⑤で店舗を選択してください</div>';return;}
 
-  // 各店舗の滞在時間を取得（入力欄があれば使う、なければデフォルト30分）
-  const stayMins=selectedStores.map((s,i)=>{
-    const el=document.getElementById(`stay-${i}`);
-    return el ? Math.max(5,parseInt(el.value)||30) : 30;
-  });
+  // 全店舗共通の滞在時間を使用
+  const stayMins=selectedStores.map(()=>selStayMin);
 
   const totalMin=hours*60;
   const stayTotal=stayMins.reduce((a,b)=>a+b,0);
@@ -619,14 +637,7 @@ function calcRoute(){
       <div class="step-info">
         <div class="step-name">${s.name}${badge}</div>
         <div class="step-sub">${s.addr||s.area}</div>
-        <div class="step-time">到着 ${arrH}:${arrM} → 出発 ${depH}:${depM}</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:5px;">
-          <span style="font-size:11px;color:var(--muted);">滞在時間：</span>
-          <input type="number" id="stay-${i}" value="${stayMins[i]}" min="5" max="120" step="5"
-            style="width:60px;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);"
-            onchange="calcRoute()">
-          <span style="font-size:11px;color:var(--muted);">分</span>
-        </div>
+        <div class="step-time">到着 ${arrH}:${arrM} → 出発 ${depH}:${depM}（滞在${selStayMin}分）</div>
       </div>
     </div>`;
     cumMin=depMin+DRIVE_MIN;
@@ -666,7 +677,7 @@ function calcRoute(){
       <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
       Googleマップで最適ルートを開く
     </a>`}
-    <p class="notice">Googleマップが自動で最短順に並び替えます<br>滞在時間は各店舗で個別に変更できます</p>`;
+    <p class="notice">Googleマップが自動で最短順に並び替えます</p>`;
 }
 </script>
 </body>
