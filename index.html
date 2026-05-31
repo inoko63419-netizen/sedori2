@@ -580,8 +580,14 @@ function calcRoute(){
   const selectedStores=foundStores.filter(s=>selStoreIds.has(s.id)).slice(0,maxStores);
   if(selectedStores.length===0){resultDiv.innerHTML='<div class="error-box">⚠️ ⑤で店舗を選択してください</div>';return;}
 
+  // 各店舗の滞在時間を取得（入力欄があれば使う、なければデフォルト30分）
+  const stayMins=selectedStores.map((s,i)=>{
+    const el=document.getElementById(`stay-${i}`);
+    return el ? Math.max(5,parseInt(el.value)||30) : 30;
+  });
+
   const totalMin=hours*60;
-  const stayTotal=selectedStores.length*STAY_MIN;
+  const stayTotal=stayMins.reduce((a,b)=>a+b,0);
   const driveTotal=(selectedStores.length-1)*DRIVE_MIN+HOME_DRIVE_MIN*(roundtrip?2:1);
   const usedMin=stayTotal+driveTotal;
   const usedPct=Math.min(100,Math.round(usedMin/totalMin*100));
@@ -590,13 +596,15 @@ function calcRoute(){
 
   const overMsg=selStoreIds.size>maxStores?`<div style="font-size:12px;color:var(--accent);margin-bottom:8px;">⚠️ 時間内は${maxStores}店舗まで。${selStoreIds.size-maxStores}店舗は除外しました。</div>`:'';
 
-  // Google Maps URL（緯度経度があればそちらを優先）
+  // Google Maps URL（iPhoneはcomgooglemaps://、PCはhttps://）
   const enc=encodeURIComponent;
   const getWp=s=>s.lat&&s.lng?`${s.lat},${s.lng}`:enc(s.name);
   const dest=roundtrip?enc(originAddr):getWp(selectedStores[selectedStores.length-1]);
   const wayArr=roundtrip?selectedStores:selectedStores.slice(0,-1);
   const waypoints=wayArr.map(s=>getWp(s)).join('|');
-  const mapsUrl=`https://www.google.com/maps/dir/?api=1&origin=${enc(originAddr)}&destination=${dest}&travelmode=driving&waypoints=optimize:true|${waypoints}`;
+  const webUrl=`https://www.google.com/maps/dir/?api=1&origin=${enc(originAddr)}&destination=${dest}&travelmode=driving&waypoints=optimize:true|${waypoints}`;
+  // iPhoneのGoogleマップアプリ用URL
+  const iosUrl=`comgooglemaps://?origin=${enc(originAddr)}&destination=${dest}&directionsmode=driving&waypoints=${wayArr.map(s=>getWp(s)).join('%7C')}`;
 
   let cumMin=HOME_DRIVE_MIN;
   let stepsHtml=`<div class="route-step"><div class="step-circle home">🏠</div><div class="step-info"><div class="step-name">出発</div><div class="step-sub">${originDisplay}</div><div class="step-time">0:00 出発</div></div></div>`;
@@ -605,8 +613,22 @@ function calcRoute(){
     const isDrug=DRUG_CHAINS.includes(s.chain);
     const badge=`<span class="badge badge-${isDrug?'drug':'super'}">${isDrug?'薬':'食'}</span>`;
     const arrH=Math.floor(cumMin/60),arrM=String(cumMin%60).padStart(2,'0');
-    const depMin=cumMin+STAY_MIN,depH=Math.floor(depMin/60),depM=String(depMin%60).padStart(2,'0');
-    stepsHtml+=`<div class="route-step"><div class="step-circle">${i+1}</div><div class="step-info"><div class="step-name">${s.name}${badge}</div><div class="step-sub">${s.addr||s.area}</div><div class="step-time">到着 ${arrH}:${arrM} → 出発 ${depH}:${depM}（滞在30分）</div></div></div>`;
+    const depMin=cumMin+stayMins[i],depH=Math.floor(depMin/60),depM=String(depMin%60).padStart(2,'0');
+    stepsHtml+=`<div class="route-step">
+      <div class="step-circle">${i+1}</div>
+      <div class="step-info">
+        <div class="step-name">${s.name}${badge}</div>
+        <div class="step-sub">${s.addr||s.area}</div>
+        <div class="step-time">到着 ${arrH}:${arrM} → 出発 ${depH}:${depM}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:5px;">
+          <span style="font-size:11px;color:var(--muted);">滞在時間：</span>
+          <input type="number" id="stay-${i}" value="${stayMins[i]}" min="5" max="120" step="5"
+            style="width:60px;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);"
+            onchange="calcRoute()">
+          <span style="font-size:11px;color:var(--muted);">分</span>
+        </div>
+      </div>
+    </div>`;
     cumMin=depMin+DRIVE_MIN;
   });
 
@@ -614,6 +636,9 @@ function calcRoute(){
     const retH=Math.floor(cumMin/60),retM=String(cumMin%60).padStart(2,'0');
     stepsHtml+=`<div class="route-step"><div class="step-circle home">🏠</div><div class="step-info"><div class="step-name">帰着</div><div class="step-sub">${originDisplay}</div><div class="step-time">約 ${retH}:${retM} 帰着</div></div></div>`;
   }
+
+  // iPhone判定
+  const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
 
   resultDiv.innerHTML=`
     ${overMsg}
@@ -629,11 +654,19 @@ function calcRoute(){
       </div>
       ${stepsHtml}
     </div>
-    <a class="btn-maps" href="${mapsUrl}" target="_blank">
+    ${isIOS ? `
+    <a class="btn-maps" href="${iosUrl}">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      Googleマップアプリで開く（iPhone）
+    </a>
+    <a class="btn-maps" href="${webUrl}" target="_blank" style="margin-top:6px;font-size:12px;opacity:0.7;">
+      ブラウザ版Googleマップで開く
+    </a>` : `
+    <a class="btn-maps" href="${webUrl}" target="_blank">
       <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
       Googleマップで最適ルートを開く
-    </a>
-    <p class="notice">Googleマップが自動で最短順に並び替えます</p>`;
+    </a>`}
+    <p class="notice">Googleマップが自動で最短順に並び替えます<br>滞在時間は各店舗で個別に変更できます</p>`;
 }
 </script>
 </body>
