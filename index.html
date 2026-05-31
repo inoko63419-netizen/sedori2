@@ -207,6 +207,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
   <button class="btn-main" id="searchBtn" onclick="searchStores()" style="margin-top:0;">
     🔍 周辺の店舗を検索する
   </button>
+  <!-- 地図 -->
+  <div id="map-wrap" style="display:none;margin-top:12px;">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">📍 ピンをタップして選択・解除できます</div>
+    <div id="store-map" style="width:100%;height:380px;border-radius:var(--radius);border:1px solid var(--border);"></div>
+    <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:var(--muted);">
+      <span>🔵 ドラッグストア</span>
+      <span>🟢 スーパー</span>
+      <span>🔴 選択済み</span>
+    </div>
+  </div>
   <div id="store-results"></div>
 </div>
 
@@ -408,6 +418,10 @@ function renderStoreResults(){
     return;
   }
 
+  // 地図を表示
+  document.getElementById('map-wrap').style.display='';
+  initMap();
+
   // チェーンごとにグループ化
   const groups={};
   foundStores.forEach(s=>{
@@ -415,7 +429,7 @@ function renderStoreResults(){
     groups[s.chain].push(s);
   });
 
-  let html='<div style="margin-top:10px;font-size:12px;color:var(--muted);margin-bottom:8px;">タップして選択してください</div>';
+  let html='<div style="margin-top:12px;font-size:12px;color:var(--muted);margin-bottom:8px;">リストからも選択できます</div>';
   Object.entries(groups).forEach(([chain,stores])=>{
     const isDrug=DRUG_CHAINS.includes(chain);
     html+=`<div class="store-group">
@@ -425,7 +439,7 @@ function renderStoreResults(){
     stores.forEach(s=>{
       const isSel=selStoreIds.has(s.id);
       const selCls=isSel?(isDrug?'sel-drug':'sel-super'):'';
-      html+=`<div class="store-item ${selCls}" onclick="toggleStore('${s.id}')">
+      html+=`<div class="store-item ${selCls}" id="item-${s.id}" onclick="toggleStore('${s.id}')">
         <div class="check-box"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="2" fill="none"/></svg></div>
         <div class="store-info">
           <div class="store-name-row">${s.name}</div>
@@ -439,18 +453,110 @@ function renderStoreResults(){
   updateSelCount();
 }
 
+// ===== 地図 =====
+let gmap=null;
+let markers={};
+
+function initMap(){
+  // 地図の中心：選択エリアの最初の店舗 or 名古屋市中心
+  const center = foundStores.find(s=>s.lat&&s.lng)
+    ? {lat:foundStores.find(s=>s.lat&&s.lng).lat, lng:foundStores.find(s=>s.lat&&s.lng).lng}
+    : {lat:35.1815, lng:136.9066};
+
+  gmap = new google.maps.Map(document.getElementById('store-map'),{
+    center, zoom:12,
+    mapTypeControl:false, streetViewControl:false, fullscreenControl:false
+  });
+
+  // 既存マーカーを削除
+  Object.values(markers).forEach(m=>m.setMap(null));
+  markers={};
+
+  // 全店舗にピンを立てる
+  foundStores.forEach(s=>{
+    if(!s.lat||!s.lng)return;
+    const isDrug=DRUG_CHAINS.includes(s.chain);
+    const marker=new google.maps.Marker({
+      position:{lat:s.lat,lng:s.lng},
+      map:gmap,
+      title:s.name,
+      icon:{
+        path:google.maps.SymbolPath.CIRCLE,
+        scale:10,
+        fillColor: selStoreIds.has(s.id) ? '#C84B11' : (isDrug?'#1D4ED8':'#15803D'),
+        fillOpacity:0.9,
+        strokeColor:'#fff',
+        strokeWeight:2
+      }
+    });
+
+    // 情報ウィンドウ
+    const infoWin=new google.maps.InfoWindow({
+      content:`<div style="font-family:'Noto Sans JP',sans-serif;min-width:160px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${s.name}</div>
+        <div style="font-size:11px;color:#666;margin-bottom:8px;">${s.addr||s.area}</div>
+        <button onclick="toggleStore('${s.id}')" id="mapbtn-${s.id}"
+          style="width:100%;padding:6px;background:${selStoreIds.has(s.id)?'#C84B11':'#1A1916'};color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">
+          ${selStoreIds.has(s.id)?'✓ 選択済み（タップで解除）':'＋ ルートに追加'}
+        </button>
+      </div>`
+    });
+
+    marker.addListener('click',()=>{
+      // 他の情報ウィンドウを閉じる
+      Object.values(markers).forEach(m=>m._infoWin&&m._infoWin.close());
+      infoWin.open(gmap,marker);
+    });
+
+    marker._infoWin=infoWin;
+    marker._storeId=s.id;
+    marker._isDrug=isDrug;
+    markers[s.id]=marker;
+  });
+
+  // 全マーカーが見えるようにズーム調整
+  if(foundStores.filter(s=>s.lat&&s.lng).length>1){
+    const bounds=new google.maps.LatLngBounds();
+    foundStores.forEach(s=>{if(s.lat&&s.lng)bounds.extend({lat:s.lat,lng:s.lng});});
+    gmap.fitBounds(bounds);
+  }
+}
+
+function updateMarkerColor(id){
+  const marker=markers[id];
+  if(!marker)return;
+  const isDrug=marker._isDrug;
+  const isSel=selStoreIds.has(id);
+  marker.setIcon({
+    path:google.maps.SymbolPath.CIRCLE,
+    scale:10,
+    fillColor: isSel?'#C84B11':(isDrug?'#1D4ED8':'#15803D'),
+    fillOpacity:0.9,
+    strokeColor:'#fff',
+    strokeWeight:2
+  });
+  // 情報ウィンドウのボタンも更新
+  const btn=document.getElementById(`mapbtn-${id}`);
+  if(btn){
+    btn.style.background=isSel?'#C84B11':'#1A1916';
+    btn.textContent=isSel?'✓ 選択済み（タップで解除）':'＋ ルートに追加';
+  }
+}
+
 function toggleStore(id){
   if(selStoreIds.has(id))selStoreIds.delete(id);
   else selStoreIds.add(id);
-  // 表示更新
+  // リスト表示更新
   const store=foundStores.find(s=>s.id===id);
   if(!store)return;
   const isDrug=DRUG_CHAINS.includes(store.chain);
-  const el=document.querySelector(`[onclick="toggleStore('${id}')"]`);
+  const el=document.getElementById(`item-${id}`);
   if(el){
     el.classList.toggle('sel-drug',selStoreIds.has(id)&&isDrug);
     el.classList.toggle('sel-super',selStoreIds.has(id)&&!isDrug);
   }
+  // マーカー色更新
+  updateMarkerColor(id);
   updateSelCount();
 }
 function updateSelCount(){
